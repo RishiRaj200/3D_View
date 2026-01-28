@@ -19,11 +19,16 @@
 
   <script>
     const params = new URLSearchParams(window.location.search);
-    const amount = params.get('amount');
+    const orderId = params.get('orderId'); // ✅ VTEX PayPal orderId
     const currency = params.get('currency') || 'USD';
-    const orderId = params.get('orderId'); // optional backend order id
 
-    // Load PayPal SDK
+    if (!orderId) {
+      window.ReactNativeWebView?.postMessage(JSON.stringify({
+        success: false,
+        error: 'Missing PayPal orderId'
+      }));
+    }
+
     const script = document.createElement('script');
     script.src =
       `https://www.paypal.com/sdk/js` +
@@ -43,36 +48,23 @@
 
       paypal.Buttons({
 
-        // ✅ FIXED: use actions.order.create
-        createOrder: (data, actions) => {
-          if (orderId) {
-            return orderId; // backend-created order
-          }
-
-          return actions.order.create({
-            purchase_units: [
-              {
-                amount: {
-                  value: amount
-                }
-              }
-            ]
-          });
+        // ✅ ALWAYS use backend-created VTEX order
+        createOrder: () => {
+          return orderId;
         },
 
-        onApprove: (data, actions) => {
-          return actions.order.capture().then(details => {
-            window.ReactNativeWebView?.postMessage(JSON.stringify({
-              success: true,
-              details
-            }));
-          });
+        // ✅ Approval ONLY (NO CAPTURE)
+        onApprove: (data) => {
+          window.ReactNativeWebView?.postMessage(JSON.stringify({
+            success: true,
+            orderID: data.orderID
+          }));
         },
 
         onCancel: () => {
           window.ReactNativeWebView?.postMessage(JSON.stringify({
             success: false,
-            error: 'Payment cancelled'
+            error: 'Payment cancelled by user'
           }));
         },
 
