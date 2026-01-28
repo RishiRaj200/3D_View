@@ -57,9 +57,12 @@
         onApprove: (data) => {
           window.ReactNativeWebView?.postMessage(JSON.stringify({
             success: true,
-            orderID: data.orderID
+            details: {
+              id: data.orderID   // 🔵 PayPal SDK orderId
+            }
           }));
         },
+
 
         onCancel: () => {
           window.ReactNativeWebView?.postMessage(JSON.stringify({
