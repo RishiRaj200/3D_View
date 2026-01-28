@@ -19,13 +19,15 @@
 
   <script>
     const params = new URLSearchParams(window.location.search);
-    const orderId = params.get('orderId'); // ✅ VTEX PayPal orderId
+
+    // 🔵 PayPal SDK Order ID (created by PayPal, passed from RN)
+    const orderId = params.get('orderId');
     const currency = params.get('currency') || 'USD';
 
     if (!orderId) {
       window.ReactNativeWebView?.postMessage(JSON.stringify({
         success: false,
-        error: 'Missing PayPal orderId'
+        error: 'Missing PayPal SDK orderId'
       }));
     }
 
@@ -48,12 +50,12 @@
 
       paypal.Buttons({
 
-        // ✅ ALWAYS use backend-created VTEX order
+        // ✅ ALWAYS return the PayPal SDK orderId
         createOrder: () => {
           return orderId;
         },
 
-        // ✅ Approval ONLY (NO CAPTURE)
+        // ✅ APPROVAL ONLY (NO CAPTURE HERE)
         onApprove: (data) => {
           window.ReactNativeWebView?.postMessage(JSON.stringify({
             success: true,
@@ -62,7 +64,6 @@
             }
           }));
         },
-
 
         onCancel: () => {
           window.ReactNativeWebView?.postMessage(JSON.stringify({
