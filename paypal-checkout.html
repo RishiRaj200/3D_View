@@ -19,18 +19,11 @@
 
   <script>
     const params = new URLSearchParams(window.location.search);
-
-    // 🔵 PayPal SDK Order ID (created by PayPal, passed from RN)
-    const orderId = params.get('orderId');
+    const amount = params.get('amount');
     const currency = params.get('currency') || 'USD';
+    const orderId = params.get('orderId'); // optional backend order id
 
-    if (!orderId) {
-      window.ReactNativeWebView?.postMessage(JSON.stringify({
-        success: false,
-        error: 'Missing PayPal SDK orderId'
-      }));
-    }
-
+    // Load PayPal SDK
     const script = document.createElement('script');
     script.src =
       `https://www.paypal.com/sdk/js` +
@@ -50,25 +43,36 @@
 
       paypal.Buttons({
 
-        // ✅ ALWAYS return the PayPal SDK orderId
-        createOrder: () => {
-          return orderId;
+        // ✅ FIXED: use actions.order.create
+        createOrder: (data, actions) => {
+          if (orderId) {
+            return orderId; // backend-created order
+          }
+
+          return actions.order.create({
+            purchase_units: [
+              {
+                amount: {
+                  value: amount
+                }
+              }
+            ]
+          });
         },
 
-        // ✅ APPROVAL ONLY (NO CAPTURE HERE)
-        onApprove: (data) => {
-          window.ReactNativeWebView?.postMessage(JSON.stringify({
-            success: true,
-            details: {
-              id: data.orderID   // 🔵 PayPal SDK orderId
-            }
-          }));
+        onApprove: (data, actions) => {
+          return actions.order.capture().then(details => {
+            window.ReactNativeWebView?.postMessage(JSON.stringify({
+              success: true,
+              details
+            }));
+          });
         },
 
         onCancel: () => {
           window.ReactNativeWebView?.postMessage(JSON.stringify({
             success: false,
-            error: 'Payment cancelled by user'
+            error: 'Payment cancelled'
           }));
         },
 
