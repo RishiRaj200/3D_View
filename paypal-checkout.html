@@ -11,7 +11,7 @@
     const createOrderUrl = params.get('createOrderUrl'); // e.g. https://your-bff/checkout/createPayPalOrder
 
     const script = document.createElement('script');
-    script.src = `https://www.paypal.com/sdk/js?client-id=YOUR_CLIENT_ID&currency=${currency}&intent=capture&components=buttons`;
+    script.src = `https://www.paypal.com/sdk/js?client-id='Ac4ydelneywT8ovo-N5TcNSiKvMCNthZtvojsP9J7WTravF2YSHaW8mZPCrHvGcbozHEBY-A_AWsuJ-b'&currency=${currency}&intent=capture&components=buttons`;
 
     script.onload = () => {
       paypal.Buttons({
