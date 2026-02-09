@@ -1,86 +1,55 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body {
-      margin: 0;
-      padding: 16px;
-      font-family: Arial, sans-serif;
-    }
-    #paypal-button {
-      min-height: 300px;
-    }
-  </style>
-</head>
+<head>...</head>
 <body>
-
   <div id="paypal-button"></div>
-
   <script>
     const params = new URLSearchParams(window.location.search);
     const amount = params.get('amount');
     const currency = params.get('currency') || 'USD';
-    const orderId = params.get('orderId'); // optional backend order id
+    const orderFormId = params.get('orderFormId');
+    const createOrderUrl = params.get('createOrderUrl'); // e.g. https://your-bff/checkout/createPayPalOrder
 
-    // Load PayPal SDK
     const script = document.createElement('script');
-    script.src =
-      `https://www.paypal.com/sdk/js` +
-      `?client-id=Ac4ydelneywT8ovo-N5TcNSiKvMCNthZtvojsP9J7WTravF2YSHaW8mZPCrHvGcbozHEBY-A_AWsuJ-b` +
-      `&currency=${currency}` +
-      `&intent=capture` +
-      `&components=buttons`;
+    script.src = `https://www.paypal.com/sdk/js?client-id=YOUR_CLIENT_ID&currency=${currency}&intent=capture&components=buttons`;
 
     script.onload = () => {
-      if (!window.paypal) {
-        window.ReactNativeWebView?.postMessage(JSON.stringify({
-          success: false,
-          error: 'PayPal SDK failed to load'
-        }));
-        return;
-      }
-
       paypal.Buttons({
-
-        // ✅ FIXED: use actions.order.create
-        createOrder: (data, actions) => {
-          if (orderId) {
-            return orderId; // backend-created order
+        createOrder: async (data, actions) => {
+          // Prefer server-created order
+          if (createOrderUrl && orderFormId) {
+            try {
+              const resp = await fetch(createOrderUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderFormId }),
+              });
+              const json = await resp.json();
+              // backend should return { orderId: 'PAYPAL_ORDER_ID' }
+              if (json?.orderId) return json.orderId;
+            } catch (e) {
+              console.error('createOrder backend failed', e);
+              // fallback to client-side creation below
+            }
           }
-
+          // fallback: client-side order create
           return actions.order.create({
-            purchase_units: [
-              {
-                amount: {
-                  value: amount
-                }
-              }
-            ]
+            purchase_units: [{ amount: { value: amount } }],
           });
         },
 
         onApprove: (data, actions) => {
           return actions.order.capture().then(details => {
-            window.ReactNativeWebView?.postMessage(JSON.stringify({
-              success: true,
-              details
-            }));
+            window.ReactNativeWebView?.postMessage(JSON.stringify({ success: true, details }));
           });
         },
 
         onCancel: () => {
-          window.ReactNativeWebView?.postMessage(JSON.stringify({
-            success: false,
-            error: 'Payment cancelled'
-          }));
+          window.ReactNativeWebView?.postMessage(JSON.stringify({ success: false, error: 'Payment cancelled' }));
         },
 
         onError: (err) => {
-          window.ReactNativeWebView?.postMessage(JSON.stringify({
-            success: false,
-            error: err?.toString() || 'PayPal error'
-          }));
+          window.ReactNativeWebView?.postMessage(JSON.stringify({ success: false, error: err?.toString() || 'PayPal error' }));
         }
 
       }).render('#paypal-button');
@@ -88,6 +57,5 @@
 
     document.body.appendChild(script);
   </script>
-
 </body>
 </html>
